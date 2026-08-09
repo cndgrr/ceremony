@@ -129,7 +129,7 @@ env:
   # `ref:` accepts ${{ env }}; `uses:` strings do not — which is why the
   # shared logic arrives as script files via checkout, not as inner `uses:`
   # references.
-  CEREMONY_SELF_REF: "0.6.3"
+  CEREMONY_SELF_REF: "08eb6a24c165a7a2f852fca8ba0343df55447b9a"
   VERSION_SOURCE: ${{ inputs.version-source }}
 
 jobs:
