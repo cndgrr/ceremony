@@ -3099,10 +3099,24 @@ check "the override probe targets the re-based at-wall crossing" 0 \
   "0.3.0" override_probe_body
 # The re-homed fixtures stand where this build put them: `atwall` on a real
 # consecutive interval, `stepable` on the synthetic source and NOT on $SRC.
-check "the at-wall fixture is pinned at the re-based rung" 0 \
-  "consumer atwall 0.2.0" cat "$ROOT/test/ceremony-upgrade.test.sh"
-check "the stepable fixture is pinned at the synthetic interval's rung" 0 \
-  "consumer stepable 0.2.0" cat "$ROOT/test/ceremony-upgrade.test.sh"
+#
+# THE NEEDLE IS BUILT FROM THE ARGUMENTS AND ANCHORED TO A WHOLE LINE, and
+# both of those are load-bearing. These two rows first cat'd the whole file
+# for an unanchored needle spelled out on the assertion's own line: the row
+# matched ITSELF, so changing the declaration it claims to guard left it
+# green. Composing the pattern here means the literal exists nowhere but the
+# declaration, and anchoring it means an assertion that quotes the pin in
+# passing can never satisfy the row. The count is bracketed on both sides so
+# a duplicated declaration reads as [2] rather than as a substring of [1].
+fixture_pin_lines() { # <fixture> <pin>
+  printf '[%s]\n' "$(
+    grep -c "^consumer $1 ${2//./\\.}\$" "$ROOT/test/ceremony-upgrade.test.sh"
+  )"
+}
+check "the at-wall fixture is pinned at the re-based rung" 0 "[1]" \
+  fixture_pin_lines atwall 0.2.0
+check "the stepable fixture is pinned at the synthetic interval's rung" 0 "[1]" \
+  fixture_pin_lines stepable 0.2.0
 stepable_runs() {
   sed -n '/^consumer stepable 0.2.0$/,/^check_absent "the shared source ladder/p' \
     "$ROOT/test/ceremony-upgrade.test.sh" | grep -- '--source'
