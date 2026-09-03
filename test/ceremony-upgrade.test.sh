@@ -41,6 +41,19 @@ SCRIPT_WITH_SPACE="$TMP/ceremony tool/bin/ceremony-upgrade"
 # migration table in bin/ceremony-upgrade names real tags, so the intervals
 # these rows exercise have to be the real intervals. The bodies are stubs;
 # only the headings are read.
+#
+# ONE FIXTURE IS AN EXCEPTION, AND IT IS DELIBERATE (#610). `stepable` stands
+# on a FABRICATED rung in a SECOND source tree ($SRC_SYNTH, built below),
+# because the shape it protects — a refusal that emits a runnable
+# `SHORTER MOVE:` — needs a released tag strictly BETWEEN the pin and an
+# unmechanised first crossing, and mechanising 0.7.0 left no real interval
+# with one: of the two crossable rows still unmechanised, nothing is released
+# below 0.2.0 but 0.1.0, and no released tag lies between 0.2.0 and 0.3.0.
+# The shape is not retired, because it re-arms whenever a release adds an
+# unmechanised row. Every OTHER fixture still uses the real intervals, and
+# the fabricated rung is kept out of $SRC on purpose: that ladder is shared,
+# and a rung inserted here would falsify `ancient`'s next-tag-on-the-ladder
+# row and silently move the intervals every other fixture exercises.
 SRC="$TMP/src"
 mkdir -p "$SRC/docs"
 printf 'AGENTS.md\nRULES.md\n' >"$SRC/docs/VENDORED.txt"
@@ -83,6 +96,41 @@ MD
   } >"$1/docs/CONSUMERS.md"
 }
 write_src_guide "$SRC"
+
+# --- the SECOND source tree, with one fabricated rung -------------------------
+#
+# Built exactly like $SRC and differing from it in ONE thing: its ladder
+# carries a rung, 0.2.5, that ceremony never released. It exists so `stepable`
+# can keep testing a refusal that emits a RUNNABLE shorter move after
+# mechanising 0.7.0 left that shape no real interval (#610) — see the
+# exception on the convention above.
+#
+# WHY THE RUNG SITS WHERE IT DOES. The shape needs a released tag strictly
+# between the pin and an unmechanised first crossing. 0.3.0 is a real,
+# still-unmechanised row, and 0.2.0 and 0.3.0 are consecutive on the real
+# ladder, so 0.2.5 is the one position that creates the interval: pinned at
+# 0.2.0 and asked for 0.4.0, the first CROSSED migration row is 0.3.0 and the
+# longest move that crosses none is 0.2.5. The fabricated tag is deliberately
+# NOT a migration row itself — it is a released rung and nothing more, which
+# is what makes it a legal destination.
+#
+# THIS LADDER IS NOT $SRC's, and must never be merged into it: $SRC is shared
+# by every other fixture, and a rung added there would falsify `ancient`'s
+# "the first crossed tag 0.2.0 is the next tag on the ladder" row and silently
+# change the intervals the whole suite exercises.
+SRC_SYNTH="$TMP/src-synth"
+mkdir -p "$SRC_SYNTH/docs"
+cp "$SRC/docs/VENDORED.txt" "$SRC_SYNTH/docs/VENDORED.txt"
+cp "$SRC/AGENTS.md" "$SRC_SYNTH/AGENTS.md"
+cp "$SRC/RULES.md" "$SRC_SYNTH/RULES.md"
+SYNTH_LADDER_TAGS="0.7.8 0.7.7 0.7.6 0.7.5 0.7.4 0.7.3 0.7.2 0.7.1 0.7.0 0.6.3 0.6.2 0.6.1 0.6.0 0.5.0 0.4.1 0.4.0 0.3.0 0.2.5 0.2.0 0.1.0"
+{
+  printf '# Changelog\n\n## Unreleased\n\n- nothing yet\n\n'
+  for t in $SYNTH_LADDER_TAGS; do
+    printf '## %s — 2026-01-01\n\n### Changed\n\n- a release\n\n' "$t"
+  done
+} >"$SRC_SYNTH/CHANGELOG.md"
+write_src_guide "$SRC_SYNTH"
 
 # --- fixture builders ---------------------------------------------------------
 
@@ -381,7 +429,7 @@ in_consumer_with_override() {
   (
     cd "$TMP/$name" || return
     CEREMONY_UPGRADE_MIGRATIONS_DONE=1 \
-      bash "$SCRIPT" --check --source "$SRC" 0.7.0
+      bash "$SCRIPT" --check --source "$SRC" 0.3.0
   )
 }
 
@@ -444,13 +492,21 @@ check_absent "a no-shorter-move refusal carries no runnable step line" 0 "SHORTE
 # suggestion from the refusal and execute that exact tag: hard-coding the
 # second invocation would test our expectation twice while never proving the
 # command's own line is performable (#588).
-consumer stepable 0.6.1
+#
+# THIS IS THE ONE FIXTURE ON THE FABRICATED LADDER (#610). It used to run
+# 0.6.1 -> 0.7.8 with 0.7.0 as its first crossing; mechanising 0.7.0 left no
+# real interval expressing the shape, so it moved to $SRC_SYNTH rather than
+# being dropped or re-based. Its first crossed tag is still a REAL
+# unmechanised row (0.3.0) — only the rung the remedy names is fabricated,
+# which is the whole point: the emitted line must be runnable, and a
+# destination that does not exist on the ladder could not be run.
+consumer stepable 0.2.0
 suggested_step() {
   suggested_step_line | sed -nE 's/.* ([0-9]+\.[0-9]+\.[0-9]+)$/\1/p'
 }
 suggested_step_line() {
   in_consumer_with_script stepable "$SCRIPT_WITH_SPACE" \
-    --check --source "$SRC" 0.7.8 2>&1 | sed -n 's/^  SHORTER MOVE: //p'
+    --check --source "$SRC_SYNTH" 0.4.0 2>&1 | sed -n 's/^  SHORTER MOVE: //p'
 }
 run_suggested_step() {
   local suggested_line
@@ -458,38 +514,58 @@ run_suggested_step() {
   [ -n "$suggested_line" ] || return 97
   (cd "$TMP/stepable" && bash -c "$suggested_line")
 }
-check "the first crossed tag is named on a stepable move" 1 "FIRST CROSSED TAG: 0.7.0" \
-  in_consumer stepable --check --source "$SRC" 0.7.8
-check "the shorter move line names the rung below the first crossing" 0 "0.6.3" \
+check "the first crossed tag is named on a stepable move" 1 "FIRST CROSSED TAG: 0.3.0" \
+  in_consumer stepable --check --source "$SRC_SYNTH" 0.4.0
+check "the shorter move line names the rung below the first crossing" 0 "0.2.5" \
   suggested_step
 check "the extracted shorter move is accepted by the command" 0 \
-  "no migration between 0.6.1 and 0.6.3" run_suggested_step
+  "no migration between 0.2.0 and 0.2.5" run_suggested_step
 check_absent "a stepable refusal does not claim there is no shorter move" 1 "NO SHORTER MOVE:" \
-  in_consumer stepable --check --source "$SRC" 0.7.8
+  in_consumer stepable --check --source "$SRC_SYNTH" 0.4.0
 check_absent "the stepable refusal contains no dead then-re-run remedy" 1 "then re-run" \
-  in_consumer stepable --check --source "$SRC" 0.7.8
+  in_consumer stepable --check --source "$SRC_SYNTH" 0.4.0
 unchanged "the stepable refusal leaves the WHOLE tree byte-identical (--check)" "$TMP/stepable" \
-  in_consumer stepable --check --source "$SRC" 0.7.8
+  in_consumer stepable --check --source "$SRC_SYNTH" 0.4.0
 unchanged "the stepable refusal leaves the WHOLE tree byte-identical (--fix)" "$TMP/stepable" \
-  in_consumer stepable --fix --source "$SRC" 0.7.8
+  in_consumer stepable --fix --source "$SRC_SYNTH" 0.4.0
+# B11's guard, asserted rather than assumed: the fabricated rung lives in the
+# second tree ONLY. A rung leaking into $SRC would leave the suite green while
+# silently moving every other fixture's intervals, so the ladder $SRC actually
+# published is read back here.
+check_absent "the shared source ladder carries no fabricated rung" 1 "0.2.5" \
+  grep '^## 0\.2\.5 ' "$SRC/CHANGELOG.md"
+check "the fabricated rung is published by the synthetic source" 0 "## 0.2.5" \
+  grep '^## 0\.2\.5 ' "$SRC_SYNTH/CHANGELOG.md"
 
 # The first crossed tag is the next rung. Falling back to the current tag
 # would emit a command that exits zero while doing nothing, so this branch
 # must carry only the explicit wall and never a runnable step line (#588).
-consumer atwall 0.6.3
-check "the at-wall refusal names its first crossed tag" 1 "FIRST CROSSED TAG: 0.7.0" \
-  in_consumer atwall --check --source "$SRC" 0.7.0
+#
+# RE-BASED FROM 0.6.3 -> 0.7.0 WHEN 0.7.0 GAINED ITS STEP (#610). The shape
+# needs the target to BE the first crossed tag and the next ladder rung after
+# the pin, which survives on a real interval: 0.2.0 and 0.3.0 are consecutive
+# and 0.3.0 stays unmechanised. NOT 0.1.0 -> 0.2.0, and the reason is recorded
+# so it is not re-litigated: 0.2.0 is the likeliest next mint on this ladder,
+# so parking here would cost this fixture a second re-base one issue later,
+# and that crossing is the one `ancient` already keys on — two fixtures dying
+# on one future mint is worse than one each. `in_consumer_with_override`'s
+# hard-coded target moved with it, above; leaving it at 0.7.0 would have kept
+# that row green while it tested a mechanised crossing instead of a hand-only
+# one.
+consumer atwall 0.2.0
+check "the at-wall refusal names its first crossed tag" 1 "FIRST CROSSED TAG: 0.3.0" \
+  in_consumer atwall --check --source "$SRC" 0.3.0
 check "the at-wall refusal says no shorter move exists" 1 \
-  "NO SHORTER MOVE: the first crossed tag 0.7.0 is the next tag on the ladder" \
-  in_consumer atwall --check --source "$SRC" 0.7.0
+  "NO SHORTER MOVE: the first crossed tag 0.3.0 is the next tag on the ladder" \
+  in_consumer atwall --check --source "$SRC" 0.3.0
 check_absent "the at-wall refusal carries no runnable step line" 0 "SHORTER MOVE:" \
-  runnable_step_lines atwall 0.7.0
+  runnable_step_lines atwall 0.3.0
 check_absent "the at-wall refusal contains no dead then-re-run remedy" 1 "then re-run" \
-  in_consumer atwall --check --source "$SRC" 0.7.0
+  in_consumer atwall --check --source "$SRC" 0.3.0
 unchanged "the at-wall refusal leaves the WHOLE tree byte-identical (--check)" "$TMP/atwall" \
-  in_consumer atwall --check --source "$SRC" 0.7.0
+  in_consumer atwall --check --source "$SRC" 0.3.0
 unchanged "the at-wall refusal leaves the WHOLE tree byte-identical (--fix)" "$TMP/atwall" \
-  in_consumer atwall --fix --source "$SRC" 0.7.0
+  in_consumer atwall --fix --source "$SRC" 0.3.0
 
 # --- 0.4.1 in particular ------------------------------------------------------
 #
@@ -2783,7 +2859,9 @@ check "the 0.7.8 migration row names its step" 0 \
   "[step_0_7_8_guarded_scaffold]" migration_step_field 0.7.8
 check "the 0.6.0 migration row names its step" 0 \
   "[step_0_6_0_doctrine_and_refs]" migration_step_field 0.6.0
-for unmechanised in 0.1.0 0.2.0 0.3.0 0.7.0; do
+check "the 0.7.0 migration row names its step" 0 \
+  "[step_0_7_0_rc_release_path]" migration_step_field 0.7.0
+for unmechanised in 0.1.0 0.2.0 0.3.0; do
   check "$unmechanised remains unmechanised" 0 "[]" \
     migration_step_field "$unmechanised"
 done
@@ -2818,27 +2896,57 @@ unexpected_vendored_hits() {
 check "every VENDORED hit is comment prose or the migration-row description" 0 \
   "[]" unexpected_vendored_hits
 
+# The disclosure 0.6.0's planner carried is DISCHARGED, not deleted: it used
+# to say the next mint owed a decision about `stepable`, and mechanising 0.7.0
+# made that decision. These rows moved with it (#610 J9) — they assert the
+# record of what was decided, so deleting the comment still reds, and the
+# absence row below makes the stale promise unrepeatable.
 stepable_disclosure() {
-  sed -n '/THE NEXT MINT OWES A DECISION/,/changing the fixture/p' "$SCRIPT"
+  sed -n '/THAT DECISION WAS MADE WHEN 0.7.0 WAS MECHANISED/,/every other fixture exercises/p' "$SCRIPT"
 }
-check "the 0.7.0 disclosure says the last stepable ladder position disappears" 0 \
-  "removes the last released ladder position that expresses the \`stepable\`" \
+check "the 0.7.0 disclosure says the last stepable ladder position disappeared" 0 \
+  "did remove the last released ladder position expressing" \
   stepable_disclosure
-check "the 0.7.0 disclosure requires a decision instead of a re-base" 0 \
-  "OWES A DECISION, NOT A RE-BASE" stepable_disclosure
+check "the 0.7.0 disclosure records the decision instead of owing one" 0 \
+  "the coverage MOVED rather than being dropped or re-based" stepable_disclosure
+check "the 0.7.0 disclosure names where the coverage went" 0 \
+  "SECOND source tree carrying one fabricated rung" stepable_disclosure
+check "the 0.7.0 disclosure says why the rung is kept out of the shared ladder" 0 \
+  "The rung is NOT in \$SRC" stepable_disclosure
+check_absent "no comment still says the next mint owes a stepable decision" 0 \
+  "OWES A DECISION, NOT A RE-BASE" cat "$SCRIPT"
 
-unchanged_fixture_block() { # <start> <end>
-  diff \
-    <(git -C "$ROOT" show 5677d46:test/ceremony-upgrade.test.sh | sed -n "$1,${2}p") \
-    <(sed -n "$1,${2}p" "$ROOT/test/ceremony-upgrade.test.sh") &&
-    echo "byte-identical-to-5677d46"
+# #605 pinned `stepable`, `atwall` and the override probe byte-identical to
+# 5677d46 PRECISELY BECAUSE 0.7.0 was still unmechanised. This build is the one
+# that moves them, so those three pins are discharged and replaced by rows
+# asserting where the fixtures now stand. A pin to a commit cannot express
+# "and it moved correctly"; these can, and they red on the specific ways this
+# re-homing goes wrong.
+override_probe_body() {
+  sed -n '/^in_consumer_with_override() {$/,/^}$/p' "$ROOT/test/ceremony-upgrade.test.sh"
 }
-check "the stepable block is byte-identical to 5677d46" 0 \
-  "byte-identical-to-5677d46" unchanged_fixture_block 447 474
-check "the atwall block is byte-identical to 5677d46" 0 \
-  "byte-identical-to-5677d46" unchanged_fixture_block 479 492
-check "the atwall override probe is byte-identical to 5677d46" 0 \
-  "byte-identical-to-5677d46" unchanged_fixture_block 638 640
+# J6's defect, made checkable: move the atwall block and leave the probe's
+# hard-coded target behind and the L638 row keeps PASSING while testing a
+# mechanised crossing instead of a hand-only one. The probe must name atwall's
+# new target and must not name the tag this build just mechanised.
+check_absent "the override probe does not target the newly mechanised tag" 0 \
+  "0.7.0" override_probe_body
+check "the override probe targets the re-based at-wall crossing" 0 \
+  "0.3.0" override_probe_body
+# The re-homed fixtures stand where this build put them: `atwall` on a real
+# consecutive interval, `stepable` on the synthetic source and NOT on $SRC.
+check "the at-wall fixture is pinned at the re-based rung" 0 \
+  "consumer atwall 0.2.0" cat "$ROOT/test/ceremony-upgrade.test.sh"
+check "the stepable fixture is pinned at the synthetic interval's rung" 0 \
+  "consumer stepable 0.2.0" cat "$ROOT/test/ceremony-upgrade.test.sh"
+stepable_runs() {
+  sed -n '/^consumer stepable 0.2.0$/,/^check_absent "the shared source ladder/p' \
+    "$ROOT/test/ceremony-upgrade.test.sh" | grep -- '--source'
+}
+check_absent "no stepable row still runs against the shared source" 0 \
+  '--source "$SRC" ' stepable_runs
+check "every stepable row runs against the synthetic source" 0 \
+  '--source "$SRC_SYNTH"' stepable_runs
 
 added_consumer_numeric_refs() {
   printf '[%s]\n' "$(
