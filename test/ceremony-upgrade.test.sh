@@ -3005,6 +3005,41 @@ check "the 0.7.0 disclosure says why the rung is kept out of the shared ladder" 
 check_absent "no comment still says the next mint owes a stepable decision" 0 \
   "OWES A DECISION, NOT A RE-BASE" cat "$SCRIPT"
 
+# B13 — the real-intervals convention acquired an exception in this build, and
+# a convention that acquires an unwritten one is the next reader's trap. These
+# rows are what make deleting the amendment red: without them the comment is
+# prose nothing measures, which is exactly how it would rot.
+intervals_convention() {
+  sed -n '/^# THE LADDER.S VERSIONS ARE THE REAL ONES on purpose/,/^# row and silently move the intervals every other fixture exercises\.$/p' \
+    "$ROOT/test/ceremony-upgrade.test.sh"
+}
+check "the real-intervals convention still states the rule" 0 \
+  "have to be the real intervals" \
+  intervals_convention
+check "the real-intervals convention carries its exception" 0 \
+  "ONE FIXTURE IS AN EXCEPTION, AND IT IS DELIBERATE" intervals_convention
+check "the exception names the fixture and its second source tree" 0 \
+  "stepable\` stands" intervals_convention
+check "the exception gives its reason" 0 \
+  "left no real interval" intervals_convention
+check "the exception says every other fixture still uses real intervals" 0 \
+  "Every OTHER fixture still uses the real intervals" intervals_convention
+
+# B18 — what the sixth mint inherits, recorded in the file rather than only in
+# this build's PR. A row matches it so deleting the paragraph reds.
+sixth_mint_disclosure() {
+  sed -n '/^# WHAT THE SIXTH MINT INHERITS/,/^# paragraph.s own advice went stale one issue after it was written last time\.$/p' \
+    "$SCRIPT"
+}
+check "the sixth-mint disclosure names the two remaining crossable tags" 0 \
+  "0.2.0 wants a triage-actors= value no" sixth_mint_disclosure
+check "the sixth-mint disclosure says which fixture stands on 0.2.0" 0 \
+  "\`ancient\` keys on 0.2.0" sixth_mint_disclosure
+check "the sixth-mint disclosure says which fixture stands on the pair" 0 \
+  "\`atwall\` keys on the 0.2.0 → 0.3.0 pair" sixth_mint_disclosure
+check "the sixth-mint disclosure says what mechanising either tag costs" 0 \
+  "re-homes \`atwall\` again" sixth_mint_disclosure
+
 # #605 pinned `stepable`, `atwall` and the override probe byte-identical to
 # 5677d46 PRECISELY BECAUSE 0.7.0 was still unmechanised. This build is the one
 # that moves them, so those three pins are discharged and replaced by rows
