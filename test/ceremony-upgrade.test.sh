@@ -520,6 +520,24 @@ check "the shorter move line names the rung below the first crossing" 0 "0.2.5" 
   suggested_step
 check "the extracted shorter move is accepted by the command" 0 \
   "no migration between 0.2.0 and 0.2.5" run_suggested_step
+# ...and the row above cannot tell WHERE that line came from. It grades the
+# command's output, so a runner that hard-codes 0.2.5 produces the same
+# output and keeps it green — which is the mutation #610 B10 names as the
+# thing that must red ("hard-coding stepable's second invocation rather than
+# extracting the emitted line"). "The line the command emitted is the line
+# that ran" is a property of the RUNNER, so it is read off the runner's body.
+# Bounded by the function's own braces: replacing it with a direct
+# invocation removes the opening line, the extract goes empty, and the two
+# positive rows red rather than passing on nothing.
+suggested_step_runner() {
+  sed -n '/^run_suggested_step() {$/,/^}$/p' "$ROOT/test/ceremony-upgrade.test.sh"
+}
+check "the stepable remedy runner captures the line the command emitted" 0 \
+  "suggested_line=\"\$(suggested_step_line)\"" suggested_step_runner
+check "the stepable remedy runner executes the captured line" 0 \
+  "bash -c \"\$suggested_line\"" suggested_step_runner
+check_absent "the stepable remedy runner names no destination of its own" 0 \
+  "0.2.5" suggested_step_runner
 check_absent "a stepable refusal does not claim there is no shorter move" 1 "NO SHORTER MOVE:" \
   in_consumer stepable --check --source "$SRC_SYNTH" 0.4.0
 check_absent "the stepable refusal contains no dead then-re-run remedy" 1 "then re-run" \
