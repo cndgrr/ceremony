@@ -727,6 +727,13 @@ Native release-candidate cuts and deterministic rc re-arming are available
 at `0.7.0` and later (#322). Adopt them with the ordinary pin bump and
 doctrine re-sync; earlier pins do not carry the rc release path.
 
+**[`ceremony-upgrade`](#ceremony-upgrade--the-bump-run-for-you) mechanises
+this `0.7.0` crossing**, and crossing it is the whole of the migration: the
+release workflow's `workflow_call` inputs are unchanged in name and in
+requiredness across this tag, so a caller valid on an earlier pin is valid
+here unchanged and the command asks your tree for no edit. The capability
+arrives inside the called workflow, which moving the pin already moves.
+
 ## Labels automation
 
 The labels automation is two reusable workflows since #209, adopted
@@ -1849,7 +1856,7 @@ The refusals, and what each one means:
 | **the refs are not all at one ref** | two ceremony refs in one tree, so it has no single pin — usually a bump that moved some lines and not others | put them on one ref by hand, then re-run; the message names the files that differ |
 | **the current pin is not a released tag** | a branch or a commit SHA cannot be placed on the release ladder, so which migrations the move crosses is unknowable | pin to a released tag first |
 | **the target tag does not exist** | the tag was never cut — check it against the [releases page](https://github.com/heavy-duty/ceremony/releases), or pass `--source` to preview an unreleased tree | — |
-| **the move crosses a migration** | the interval between your pin and the target contains a tag whose note in this guide asks something of your tree | it depends on the first crossed tag. Where that tag carries an **applied step** — [`0.4.1`](#labels-automation)'s two-caller split, [`0.5.0`](#labels-automation)'s panel rows, [`0.6.0`](#doctrine-mirror)'s doctrine-mirror crossing, and [`0.7.8`](#the-guarded-scaffold--ceremony-owns-a-block-you-own-the-rest)'s guarded scaffold, the tags mechanised so far — the command performs that tag for you, the refs and whatever edits that tag needs in one pass, then stops there and names the pin it left you at and what still stands between that pin and the tag you asked for; run it again from the new pin for the next rung. Where the first crossed tag has no applied step, and where a step cannot anchor one of its edits in your tree, the crossing is hand-only: perform the first crossed tag's edits and move the ceremony refs to that tag in the same commit, because tree edits alone do not change the pinned interval. When a released tag exists between the current pin and that first crossing, the message emits that shorter runnable move; otherwise it says no shorter move exists |
+| **the move crosses a migration** | the interval between your pin and the target contains a tag whose note in this guide asks something of your tree | it depends on the first crossed tag. Where that tag carries an **applied step** — [`0.4.1`](#labels-automation)'s two-caller split, [`0.5.0`](#labels-automation)'s panel rows, [`0.6.0`](#doctrine-mirror)'s doctrine-mirror crossing, [`0.7.0`](#the-artifact-hook)'s rc release path, and [`0.7.8`](#the-guarded-scaffold--ceremony-owns-a-block-you-own-the-rest)'s guarded scaffold, the tags mechanised so far — the command performs that tag for you, the refs and whatever edits that tag needs in one pass, then stops there and names the pin it left you at and what still stands between that pin and the tag you asked for; run it again from the new pin for the next rung. Where the first crossed tag has no applied step, and where a step cannot anchor one of its edits in your tree, the crossing is hand-only: perform the first crossed tag's edits and move the ceremony refs to that tag in the same commit, because tree edits alone do not change the pinned interval. When a released tag exists between the current pin and that first crossing, the message emits that shorter runnable move; otherwise it says no shorter move exists |
 | **the move is backwards** | a downgrade; this guide's notes are written forwards and none of them says how to undo a tag | undo the crossed migrations deliberately and move the refs by hand |
 
 Every refusal names the tags it is refusing over and the section of this

@@ -1578,6 +1578,34 @@ sweep_diff_run2_to_run3() {
 check "run three moved the sweep caller's pin and not one other byte of it" 0 \
   "identical-but-for-the-pin" sweep_diff_run2_to_run3
 
+# The FOURTH rung, which exists because 0.7.0 gained a step (#610): the tag
+# run three named as what comes next is now climbable, so this consumer walks
+# 0.3.0 -> 0.4.1 -> 0.5.0 -> 0.6.0 -> 0.7.0 one rung per invocation. The block
+# keeps the two properties it exists for — no run climbs two rungs, and a run
+# writes no consumer byte it did not plan — and 0.7.0 writing none is exactly
+# what the sweep-caller diff measures here.
+SWEEP_AFTER_RUN3="$TMP/bshoplong-sweep-run3"
+sweep_of bshoplong >"$SWEEP_AFTER_RUN3"
+
+RUN4="$TMP/bshoplong-run4"
+capture_run "$RUN4" in_consumer bshoplong --fix --source "$SRC" 0.7.8
+
+check "the fourth run performs the fourth rung" 1 \
+  "0.6.0 -> 0.7.0 done, including the applied step for 0.7.0" replay_run "$RUN4"
+check "the fourth run leaves the pin at the fourth rung" 1 \
+  "THIS RUN LEAVES THE PIN AT 0.7.0" replay_run "$RUN4"
+check_absent "the fourth run does not report the requested move as done" 1 \
+  "0.7.8 done" replay_run "$RUN4"
+check "every ref now reads the fourth rung, the created caller included" 0 \
+  "$((PIN_COUNT + 1)) 0.7.0" refs bshoplong
+check_absent "no ref is left at the third rung" 0 "0.6.0" refs bshoplong
+sweep_run3_repinned() { sed 's|labels-sweep\.yml@0\.6\.0|labels-sweep.yml@0.7.0|' "$SWEEP_AFTER_RUN3"; }
+sweep_diff_run3_to_run4() {
+  diff <(sweep_run3_repinned) <(sweep_of bshoplong) && echo "identical-but-for-the-pin"
+}
+check "run four moved the sweep caller's pin and not one other byte of it" 0 \
+  "identical-but-for-the-pin" sweep_diff_run3_to_run4
+
 # --- A3: an unmechanised first crossed tag still refuses, unchanged ---------
 #
 # cast at 0.1.0 is the honest measurement of what this issue does NOT buy: its
@@ -3004,10 +3032,14 @@ stepable_runs() {
   sed -n '/^consumer stepable 0.2.0$/,/^check_absent "the shared source ladder/p' \
     "$ROOT/test/ceremony-upgrade.test.sh" | grep -- '--source'
 }
+# The needles carry no dollar on purpose: they are matched against the FILE's
+# own text, where the variable name is literal, and a needle written with one
+# would be a shellcheck SC2016 for no gain. 'SRC" ' matches the shared source
+# and cannot match "$SRC_SYNTH", which ends 'SYNTH"'.
 check_absent "no stepable row still runs against the shared source" 0 \
-  '--source "$SRC" ' stepable_runs
+  'SRC" ' stepable_runs
 check "every stepable row runs against the synthetic source" 0 \
-  '--source "$SRC_SYNTH"' stepable_runs
+  'SRC_SYNTH"' stepable_runs
 
 added_consumer_numeric_refs() {
   printf '[%s]\n' "$(
