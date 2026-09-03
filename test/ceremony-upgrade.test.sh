@@ -1414,6 +1414,33 @@ sweep_diff_run1_to_run2() {
 check "run two moved the sweep caller's pin and not one other byte of it" 0 \
   "identical-but-for-the-pin" sweep_diff_run1_to_run2
 
+# C1 — the third run, and the first release in which three applied steps can
+# be climbed one per invocation (#605 H9). 0.6.0 writes no consumer byte of
+# its own, so the caller created by run one may differ only in its pin again.
+SWEEP_AFTER_RUN2="$TMP/bshoplong-sweep-run2"
+sweep_of bshoplong >"$SWEEP_AFTER_RUN2"
+
+RUN3="$TMP/bshoplong-run3"
+capture_run "$RUN3" in_consumer bshoplong --fix --source "$SRC" 0.7.8
+
+check "the third run performs the third rung" 1 \
+  "0.5.0 -> 0.6.0 done, including the applied step for 0.6.0" replay_run "$RUN3"
+check "the third run leaves the pin at the third rung" 1 \
+  "THIS RUN LEAVES THE PIN AT 0.6.0" replay_run "$RUN3"
+check "the third rung names 0.7.0 as what comes next" 1 \
+  "The next migration between them is 0.7.0" replay_run "$RUN3"
+check_absent "the third run does not report the requested move as done" 1 \
+  "0.7.8 done" replay_run "$RUN3"
+check "every ref now reads the third rung, the created caller included" 0 \
+  "$((PIN_COUNT + 1)) 0.6.0" refs bshoplong
+check_absent "no ref is left at the second rung" 0 "0.5.0" refs bshoplong
+sweep_run2_repinned() { sed 's|labels-sweep\.yml@0\.5\.0|labels-sweep.yml@0.6.0|' "$SWEEP_AFTER_RUN2"; }
+sweep_diff_run2_to_run3() {
+  diff <(sweep_run2_repinned) <(sweep_of bshoplong) && echo "identical-but-for-the-pin"
+}
+check "run three moved the sweep caller's pin and not one other byte of it" 0 \
+  "identical-but-for-the-pin" sweep_diff_run2_to_run3
+
 # --- A3: an unmechanised first crossed tag still refuses, unchanged ---------
 #
 # cast at 0.1.0 is the honest measurement of what this issue does NOT buy: its
@@ -2373,6 +2400,76 @@ check "the labels caller keeps the grant the rung below wrote" 0 \
 check "the mirror is current after a step that wrote no tree edit" 0 \
   "is an exact mirror" in_consumer_docs_sync panelrows --check --source "$SRC"
 
+# --- C2: 0.6.0's two-clause plan and mirror-only crossing (#605) -----------
+#
+# This source differs from the general fixture on purpose: RELEASES.md is in
+# this tag's manifest, while the generic source is deliberately small. The
+# crossing must learn that path from its own migration prose and leave the
+# manifest to docs-sync, its only reader.
+SRC_060="$TMP/src-060"
+cp -pPR "$SRC" "$SRC_060"
+printf 'RELEASES.md\n' >>"$SRC_060/docs/VENDORED.txt"
+printf '# releases from the source tag\n' >"$SRC_060/RELEASES.md"
+
+consumer doctrine060 0.5.0
+check "0.6.0 is announced as an applied step" 0 \
+  "0.6.0 is an APPLIED STEP, so this run performs 0.5.0 -> 0.6.0 and stops there" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the 0.6.0 check prints a plan" 0 "THE PLAN" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check_absent "the applied 0.6.0 check is not a fault" 0 "FAULT" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check_absent "the applied 0.6.0 check is not hand-only" 0 "THE CROSSING IS HAND-ONLY" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the plan names RELEASES.md as the crossing's edit" 0 \
+  "edit .ceremony/RELEASES.md" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the plan names the existing mirror re-sync as its writer" 0 \
+  "mirror re-sync at the end of this run" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the plan names docs-sync --fix as that mirror writer" 0 \
+  "writes it through docs-sync --fix" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the mirror plan line names its guide section" 0 \
+  'docs/CONSUMERS.md § "Doctrine mirror"' \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the separate plan clause says refs-not-closing becomes available" 0 \
+  "refs-not-closing becomes available at this tag" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the refs clause says this command writes no caller" 0 \
+  "this command writes no" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the refs clause joins that no-write promise to the optional caller" 0 \
+  "caller for it; adopting .github/workflows/refs-guard.yml is your call" \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+check "the refs clause names the bootstrap guide section" 0 \
+  'docs/CONSUMERS.md § "Bootstrap a new repo"' \
+  in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+unchanged "the 0.6.0 check leaves the whole tree byte-identical" \
+  "$TMP/doctrine060" in_consumer doctrine060 --check --source "$SRC_060" 0.6.0
+
+WORKFLOWS_060_BEFORE="$(github_paths doctrine060)"
+CROSSING_060="$TMP/doctrine060-crossing"
+capture_run "$CROSSING_060" \
+  in_consumer doctrine060 --fix --source "$SRC_060" 0.6.0
+
+check "the 0.6.0 crossing completes" 0 \
+  "0.5.0 -> 0.6.0 done, including the applied step for 0.6.0" \
+  replay_run "$CROSSING_060"
+check "the completed crossing advances every ref" 0 "$PIN_COUNT 0.6.0" \
+  refs doctrine060
+check_absent "the completed crossing leaves no ref at 0.5.0" 0 "0.5.0" \
+  refs doctrine060
+check "docs-sync wrote RELEASES.md with the source tag's bytes" 0 \
+  "# releases from the source tag" cat "$TMP/doctrine060/.ceremony/RELEASES.md"
+check "the completed 0.6.0 mirror is exact" 0 "is an exact mirror" \
+  in_consumer_docs_sync doctrine060 --check --source "$SRC_060"
+check_absent "the completed crossing writes no refs-guard caller" 0 \
+  "refs-guard.yml" github_paths doctrine060
+paths_060_now() { github_paths doctrine060; }
+check "the completed crossing leaves the workflow path set unchanged" 0 \
+  "$WORKFLOWS_060_BEFORE" paths_060_now
+
 # --- B5: a tag with no step still refuses, byte for byte --------------------
 #
 # MEASURED, NOT ARGUED. The claim is that this build changed nothing about an
@@ -2632,6 +2729,8 @@ check "the refusals row names 0.4.1's applied step" 0 \
   "[\`0.4.1\`](#labels-automation)'s two-caller split" refusals_row
 check "the refusals row names 0.5.0's" 0 \
   "[\`0.5.0\`](#labels-automation)'s panel rows" refusals_row
+check "the refusals row names 0.6.0's" 0 \
+  "[\`0.6.0\`](#doctrine-mirror)'s doctrine-mirror crossing" refusals_row
 check "the refusals row names 0.7.8's" 0 \
   "[\`0.7.8\`](#the-guarded-scaffold--ceremony-owns-a-block-you-own-the-rest)'s guarded scaffold" \
   refusals_row
@@ -2641,6 +2740,31 @@ check "the refusals row claims no count the next rung would falsify" 0 \
   "the tags mechanised so far" refusals_row
 check_absent "it does not say two" 0 "the two tags" refusals_row
 check_absent "and it does not say both" 0 "both of them" refusals_row
+
+mechanised_set_rows() {
+  git -C "$ROOT" grep -hF 'the tags mechanised so far' -- \
+    ':!test/ceremony-upgrade.test.sh'
+}
+mechanised_set_row_count() {
+  printf '[%s]\n' "$(mechanised_set_rows | wc -l | tr -d ' ')"
+}
+check "one consumer-facing row states the complete mechanised set" 0 "[1]" \
+  mechanised_set_row_count
+check "that complete set includes 0.6.0" 0 \
+  "[\`0.6.0\`](#doctrine-mirror)'s doctrine-mirror crossing" \
+  mechanised_set_rows
+
+doctrine_section() { guide_section '## Doctrine mirror'; }
+doctrine_route="[\`ceremony-upgrade\`](#ceremony-upgrade--the-bump-run-for-you) mechanises this \`0.6.0\` crossing"
+check "the Doctrine mirror section names ceremony-upgrade for 0.6.0" 0 \
+  "$doctrine_route" doctrine_section
+check "the Doctrine mirror route keeps docs-sync as the RELEASES.md writer" 0 \
+  "end-of-run mirror re-sync writes it through \`docs-sync --fix\`" \
+  doctrine_section
+check "the Doctrine mirror route says no refs-guard caller is written" 0 \
+  "command writes no \`.github/workflows/refs-guard.yml\`" doctrine_section
+check "the Doctrine mirror route leaves adoption to the consumer" 0 \
+  "consumer's own call under [Bootstrap a new repo]" doctrine_section
 
 guarded_scaffold_section() {
   guide_section '### The guarded scaffold — ceremony owns a block, you own the rest'
@@ -2657,10 +2781,76 @@ migration_step_field() { # <tag>
 }
 check "the 0.7.8 migration row names its step" 0 \
   "[step_0_7_8_guarded_scaffold]" migration_step_field 0.7.8
-for unmechanised in 0.1.0 0.2.0 0.3.0 0.6.0 0.7.0; do
+check "the 0.6.0 migration row names its step" 0 \
+  "[step_0_6_0_doctrine_and_refs]" migration_step_field 0.6.0
+for unmechanised in 0.1.0 0.2.0 0.3.0 0.7.0; do
   check "$unmechanised remains unmechanised" 0 "[]" \
     migration_step_field "$unmechanised"
 done
+
+doctrine_step_body() {
+  sed -n '/^step_0_6_0_doctrine_and_refs() {$/,/^}$/p' "$SCRIPT"
+}
+check "the 0.6.0 step carries a non-empty plan" 0 "step_plan+=(" \
+  doctrine_step_body
+check_absent "the 0.6.0 step has no refusal" 0 "step_refuse" \
+  doctrine_step_body
+check_absent "the 0.6.0 step declares no new file" 0 "step_new_file" \
+  doctrine_step_body
+check_absent "the 0.6.0 step declares no edited file" 0 "step_edit_file" \
+  doctrine_step_body
+check_absent "the 0.6.0 step declares no edit operations" 0 "step_edit_ops" \
+  doctrine_step_body
+check_absent "the 0.6.0 step does not read the doctrine manifest" 0 \
+  "VENDORED.txt" doctrine_step_body
+
+unexpected_vendored_hits() {
+  printf '[%s]\n' "$(
+    awk '
+      /VENDORED/ {
+        if ($0 ~ /^[[:space:]]*#/) next
+        if ($0 ~ /^  "0\.1\.0\|Read the manifest/) next
+        print NR ":" $0
+      }
+    ' "$SCRIPT"
+  )"
+}
+check "every VENDORED hit is comment prose or the migration-row description" 0 \
+  "[]" unexpected_vendored_hits
+
+stepable_disclosure() {
+  sed -n '/THE NEXT MINT OWES A DECISION/,/changing the fixture/p' "$SCRIPT"
+}
+check "the 0.7.0 disclosure says the last stepable ladder position disappears" 0 \
+  "removes the last released ladder position that expresses the \`stepable\`" \
+  stepable_disclosure
+check "the 0.7.0 disclosure requires a decision instead of a re-base" 0 \
+  "OWES A DECISION, NOT A RE-BASE" stepable_disclosure
+
+unchanged_fixture_block() { # <start> <end>
+  diff \
+    <(git -C "$ROOT" show 5677d46:test/ceremony-upgrade.test.sh | sed -n "$1,${2}p") \
+    <(sed -n "$1,${2}p" "$ROOT/test/ceremony-upgrade.test.sh") &&
+    echo "byte-identical-to-5677d46"
+}
+check "the stepable block is byte-identical to 5677d46" 0 \
+  "byte-identical-to-5677d46" unchanged_fixture_block 447 474
+check "the atwall block is byte-identical to 5677d46" 0 \
+  "byte-identical-to-5677d46" unchanged_fixture_block 479 492
+check "the atwall override probe is byte-identical to 5677d46" 0 \
+  "byte-identical-to-5677d46" unchanged_fixture_block 638 640
+
+added_consumer_numeric_refs() {
+  printf '[%s]\n' "$(
+    git -C "$ROOT" diff --unified=0 5677d46 -- \
+      bin/ceremony-upgrade docs/CONSUMERS.md |
+      sed -n 's/^+//p' |
+      awk '!/^[[:space:]]*#/' |
+      grep -E '#[0-9]+' || true
+  )"
+}
+check "new messages, plan lines and guide prose carry no issue number" 0 \
+  "[]" added_consumer_numeric_refs
 
 guarded_step_body() {
   sed -n '/^step_0_7_8_guarded_scaffold() {$/,/^}$/p' "$SCRIPT"

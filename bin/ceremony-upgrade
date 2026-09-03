@@ -152,7 +152,7 @@ MIGRATIONS=(
   "0.3.0|Labels automation|.github/labeler.yml's accepted shape NARROWS to additive scope rows — any other key now fails the run loudly rather than being ignored.|"
   "0.4.1|Labels automation|THE TWO-CALLER SPLIT (#209), and it is the destructive one. Add .github/workflows/labels-sweep.yml; MOVE the hourly cron out of labels.yml into it — move, never copy, because a copied cron gives DOUBLE SWEEPS; and grant actions: write. Without the split the trigger job goes RED ON EVERY PR AND ISSUE EVENT and event-woken sweeps stop.|step_0_4_1_two_caller_split"
   "0.5.0|Labels automation|panel[<login>]= rows become legal in .github/labels.conf. A bracketed row on an earlier pin is a parse failure and the whole label board goes down, so never move backwards across this tag with one written.|step_0_5_0_panel_rows"
-  "0.6.0|Doctrine mirror|RELEASES.md joins the vendored set and .ceremony/ is short a file until the mirror is re-synced; refs-not-closing becomes available; and the manifest at a tag is guaranteed the complete set only from here.|"
+  "0.6.0|Doctrine mirror|RELEASES.md joins the vendored set and .ceremony/ is short a file until the mirror is re-synced; refs-not-closing becomes available; and the manifest at a tag is guaranteed the complete set only from here.|step_0_6_0_doctrine_and_refs"
   "0.7.0|The artifact hook|Native release-candidate cuts and deterministic rc re-arming arrive; earlier pins do not carry the rc release path.|"
   "0.7.8|The guarded scaffold — ceremony owns a block, you own the rest|.github/pull_request_template.md gains a ceremony-owned block, read from the pin's docs/SCAFFOLDED.txt, and docs-sync --check goes RED until it is there. Run docs-sync --fix from the repo root and commit that file alongside .ceremony/ in the SAME PR that moves the ref — split them and the default branch is red in between. Where the template already exists, --fix appends the block and leaves your own content alone.|step_0_7_8_guarded_scaffold"
 )
@@ -1548,6 +1548,36 @@ step_0_5_0_panel_rows() {
     "    $GUIDE_NAME § \"Labels automation\" is where that is stated, and it puts"
     "    the requirement on the EARLIER pin: a bracketed row below this tag is the"
     "    parse failure, never one at it. So this run is the refs and the mirror."
+  )
+}
+
+# --- 0.6.0: the mirror writes one clause; the other writes nothing ---------
+#
+# THE LADDER'S FOURTH MECHANISED TAG (#605). Its two clauses have the two
+# no-write reasons established by the prior planners. RELEASES.md joins the
+# doctrine mirror, so docs-sync --fix — already run at the end of every move —
+# is its one writer; repeating that write here or reading docs/VENDORED.txt
+# would create the second writer or second manifest reader forbidden by the
+# write-territory contract. refs-not-closing merely becomes AVAILABLE: its
+# caller is optional consumer policy, just as 0.5.0's optional panel row is.
+#
+# IT CALLS step_refuse NOWHERE. This planner reads no consumer anchor and
+# writes no byte, while docs-sync owns mirror failures and the surrounding
+# transaction rolls its partial writes back. There is no additional tree
+# shape for this step to refuse; stating that here makes the absence a
+# decision rather than a forgotten guard (#605 H2, H5).
+#
+# THE NEXT MINT OWES A DECISION, NOT A RE-BASE (#605 H11): mechanising 0.7.0
+# removes the last released ladder position that expresses the `stepable`
+# refusal shape. Its builder must decide where that coverage lives before
+# changing the fixture; rebasing it onto another real interval is impossible.
+step_0_6_0_doctrine_and_refs() {
+  step_plan+=(
+    "    edit .ceremony/RELEASES.md — the mirror re-sync at the end of this run"
+    "    writes it through docs-sync --fix; $GUIDE_NAME § \"Doctrine mirror\" describes that ownership."
+    "    refs-not-closing becomes available at this tag, but this command writes no"
+    "    caller for it; adopting .github/workflows/refs-guard.yml is your call."
+    "    $GUIDE_NAME § \"Bootstrap a new repo\" publishes that optional caller."
   )
 }
 
