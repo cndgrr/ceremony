@@ -2996,8 +2996,10 @@ check_absent "the 0.6.0 step does not read the doctrine manifest" 0 \
 # result is discarded, or an edit declaration the planner never acts on all
 # change no behaviour and no output, so no fixture can see them. Only reading
 # the body can. Extraction starts at the definition line and NOT at the head
-# comment above it, which says "IT CALLS step_refuse NOWHERE" and would
-# satisfy every absence row it is supposed to fail.
+# comment above it: that paragraph argues the absence in PROSE, and says
+# "IT CALLS step_refuse NOWHERE" to do it, so an extractor that swallowed it
+# would red every absence row unconditionally — and the obvious way out of a
+# row that can never pass is to loosen its needle until it measures nothing.
 #
 # Both manifests, not one: this step reads neither, and VENDORED.txt is only
 # incidentally covered for it by the file-wide row below.
