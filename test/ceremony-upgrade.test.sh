@@ -2991,7 +2991,9 @@ check "every VENDORED hit is comment prose or the migration-row description" 0 \
 # record of what was decided, so deleting the comment still reds, and the
 # absence row below makes the stale promise unrepeatable.
 stepable_disclosure() {
-  sed -n '/THAT DECISION WAS MADE WHEN 0.7.0 WAS MECHANISED/,/every other fixture exercises/p' "$SCRIPT"
+  awk '/THAT DECISION WAS MADE WHEN 0.7.0 WAS MECHANISED/ { armed = 1 }
+       armed && !/^#/ { exit }
+       armed' "$SCRIPT"
 }
 check "the 0.7.0 disclosure says the last stepable ladder position disappeared" 0 \
   "did remove the last released ladder position expressing" \
@@ -3009,9 +3011,16 @@ check_absent "no comment still says the next mint owes a stepable decision" 0 \
 # a convention that acquires an unwritten one is the next reader's trap. These
 # rows are what make deleting the amendment red: without them the comment is
 # prose nothing measures, which is exactly how it would rot.
+# Bounded by the END OF THE COMMENT BLOCK, never by a second literal. An
+# end-anchored range whose anchor is inside the region it grades runs to EOF
+# the moment that region is deleted — and then sweeps up the needles in the
+# rows below, which pass for the wrong reason. Deleting the exception must red
+# every row that names it, so the extractor stops at the first non-comment
+# line and returns nothing at all when the block's opening line is gone.
 intervals_convention() {
-  sed -n '/^# THE LADDER.S VERSIONS ARE THE REAL ONES on purpose/,/^# row and silently move the intervals every other fixture exercises\.$/p' \
-    "$ROOT/test/ceremony-upgrade.test.sh"
+  awk '/^# THE LADDER.S VERSIONS ARE THE REAL ONES on purpose/ { armed = 1 }
+       armed && !/^#/ { exit }
+       armed' "$ROOT/test/ceremony-upgrade.test.sh"
 }
 check "the real-intervals convention still states the rule" 0 \
   "have to be the real intervals" \
@@ -3028,8 +3037,9 @@ check "the exception says every other fixture still uses real intervals" 0 \
 # B18 — what the sixth mint inherits, recorded in the file rather than only in
 # this build's PR. A row matches it so deleting the paragraph reds.
 sixth_mint_disclosure() {
-  sed -n '/^# WHAT THE SIXTH MINT INHERITS/,/^# paragraph.s own advice went stale one issue after it was written last time\.$/p' \
-    "$SCRIPT"
+  awk '/^# WHAT THE SIXTH MINT INHERITS/ { armed = 1 }
+       armed && !/^#/ { exit }
+       armed' "$SCRIPT"
 }
 check "the sixth-mint disclosure names the two remaining crossable tags" 0 \
   "0.2.0 wants a triage-actors= value no" sixth_mint_disclosure
