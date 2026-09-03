@@ -153,7 +153,7 @@ MIGRATIONS=(
   "0.4.1|Labels automation|THE TWO-CALLER SPLIT (#209), and it is the destructive one. Add .github/workflows/labels-sweep.yml; MOVE the hourly cron out of labels.yml into it — move, never copy, because a copied cron gives DOUBLE SWEEPS; and grant actions: write. Without the split the trigger job goes RED ON EVERY PR AND ISSUE EVENT and event-woken sweeps stop.|step_0_4_1_two_caller_split"
   "0.5.0|Labels automation|panel[<login>]= rows become legal in .github/labels.conf. A bracketed row on an earlier pin is a parse failure and the whole label board goes down, so never move backwards across this tag with one written.|step_0_5_0_panel_rows"
   "0.6.0|Doctrine mirror|RELEASES.md joins the vendored set and .ceremony/ is short a file until the mirror is re-synced; refs-not-closing becomes available; and the manifest at a tag is guaranteed the complete set only from here.|step_0_6_0_doctrine_and_refs"
-  "0.7.0|The artifact hook|Native release-candidate cuts and deterministic rc re-arming arrive; earlier pins do not carry the rc release path.|"
+  "0.7.0|The artifact hook|Native release-candidate cuts and deterministic rc re-arming arrive; earlier pins do not carry the rc release path.|step_0_7_0_rc_release_path"
   "0.7.8|The guarded scaffold — ceremony owns a block, you own the rest|.github/pull_request_template.md gains a ceremony-owned block, read from the pin's docs/SCAFFOLDED.txt, and docs-sync --check goes RED until it is there. Run docs-sync --fix from the repo root and commit that file alongside .ceremony/ in the SAME PR that moves the ref — split them and the default branch is red in between. Where the template already exists, --fix appends the block and leaves your own content alone.|step_0_7_8_guarded_scaffold"
 )
 
@@ -1567,10 +1567,21 @@ step_0_5_0_panel_rows() {
 # shape for this step to refuse; stating that here makes the absence a
 # decision rather than a forgotten guard (#605 H2, H5).
 #
-# THE NEXT MINT OWES A DECISION, NOT A RE-BASE (#605 H11): mechanising 0.7.0
-# removes the last released ladder position that expresses the `stepable`
-# refusal shape. Its builder must decide where that coverage lives before
-# changing the fixture; rebasing it onto another real interval is impossible.
+# THAT DECISION WAS MADE WHEN 0.7.0 WAS MECHANISED (#610 J7), and this
+# records what it was so the fixture's shape is never read as a shortcut.
+# Mechanising 0.7.0 did remove the last released ladder position expressing
+# the `stepable` refusal shape — that shape needs a released tag strictly
+# BETWEEN the pin and an unmechanised first crossing, and the two crossable
+# rows left, 0.2.0 and 0.3.0, both fail it: nothing is released below 0.2.0
+# except 0.1.0 with nothing under it, and no released tag lies between 0.2.0
+# and 0.3.0. So the coverage MOVED rather than being dropped or re-based: the
+# fixture now builds a SECOND source tree carrying one fabricated rung
+# between two real ladder tags. It was not dropped, because the shape re-arms
+# whenever a release adds an unmechanised row — 0.7.8 was such a row — so the
+# emitted `SHORTER MOVE:` line is a live path whose runnability #588 exists to
+# prove. The rung is NOT in $SRC: that ladder is shared, and a rung inserted
+# there would falsify `ancient`'s next-tag-on-the-ladder row and silently move
+# the intervals every other fixture exercises.
 step_0_6_0_doctrine_and_refs() {
   step_plan+=(
     "    edit .ceremony/RELEASES.md — the mirror re-sync at the end of this run"
@@ -1578,6 +1589,61 @@ step_0_6_0_doctrine_and_refs() {
     "    refs-not-closing becomes available at this tag, but this command writes no"
     "    caller for it; adopting .github/workflows/refs-guard.yml is your call."
     "    $GUIDE_NAME § \"Bootstrap a new repo\" publishes that optional caller."
+  )
+}
+
+# --- 0.7.0: the crossing that asks this tree for nothing --------------------
+#
+# THE LADDER'S FIFTH MECHANISED TAG (#610), and it is 0.5.0's class exactly:
+# every edit this crossing needs is one the command already performs for every
+# move — the refs, and the mirror re-sync at the end. There is no consumer
+# byte left for a step to write, so this one writes none.
+#
+# THE REASON IS MEASURED, NOT READ OFF THE NOTE. The guide's sentence says the
+# rc capability is adopted "with the ordinary pin bump and doctrine re-sync",
+# which alone is a claim about prose. It was checked against the artifact:
+# release.yml's workflow_call interface declares ONE input, version-source,
+# type string and required: false, with the same default at 0.6.3 and at
+# 0.7.0 — no input is added and none becomes required, and workflow_call
+# declares no secrets at either tag. A caller valid at 0.6.3 is therefore
+# valid at 0.7.0 unchanged. The rc path arrives INSIDE the called workflow,
+# which the pin bump already moves, so a forward-moving consumer tree is asked
+# for nothing. The only other consumer-visible change is doctrine, and that
+# reaches a tree through the vendored mirror, re-synced on the way out of
+# every run.
+#
+# IT CALLS step_refuse NOWHERE, AND THAT IS A DECISION RATHER THAN AN
+# OMISSION. This planner reads no consumer anchor and writes no byte, so
+# there is nothing it can fail to find and no tree shape a FORWARD crossing of
+# 0.7.0 breaks; docs-sync owns mirror failures and the surrounding transaction
+# rolls partial writes back. An absent guard and a forgotten one look
+# identical to the next reader, which is what this paragraph is for.
+#
+# AND IT IS A ROW WITH A STEP, NEVER A DELETED ROW (#597 D2), for the reason
+# 0.5.0's planner states: dropping the row would make the tag uncountable,
+# moving every neighbouring message's crossed count and redding the ratchet
+# against the guide's own availability notes.
+#
+# WHAT THE SIXTH MINT INHERITS (#610 J15). Two crossable tags remain and both
+# are harder than any of the five: 0.2.0 wants a triage-actors= value no
+# machine can choose, and 0.3.0 wants a judgement about a consumer's own
+# labeler.yml. Which fixtures stand on them, so the next builder learns it
+# from this file rather than by grepping: `ancient` keys on 0.2.0 (its first
+# crossed tag, and its crossed-set row enumerates through 0.7.0), and
+# `atwall` keys on the 0.2.0 → 0.3.0 pair after this change moved it there.
+# Mechanising EITHER of those two tags therefore re-homes `atwall` again, and
+# mechanising 0.2.0 also moves `ancient`'s first-crossed row. Read the pins,
+# the refusal message and the guide's clauses AS THEY STAND THEN — this
+# paragraph's own advice went stale one issue after it was written last time.
+step_0_7_0_rc_release_path() {
+  step_plan+=(
+    "    no edit to this tree: $first_crossed asks it for nothing. Native"
+    "    release-candidate cuts and deterministic rc re-arming arrive INSIDE the"
+    "    called release workflow, which moving the pin already moves; its"
+    "    workflow_call inputs are unchanged in name and in requiredness across"
+    "    this tag, so a caller valid below it is valid at it unchanged."
+    "    $GUIDE_NAME § \"The artifact hook\" is where the arriving capability is"
+    "    described. So this run is the refs and the mirror."
   )
 }
 
