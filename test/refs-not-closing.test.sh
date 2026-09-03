@@ -163,11 +163,63 @@ body fence-mismatched '```' 'The record said Refs #220 there.' '~~~' \
 check "a tilde line does not close a backtick fence" 1 \
   "every Refs occurrence is quoted" guard fence-mismatched 220
 
+# Quoting is classified per number, so the remedy is selected per number. A
+# set that does not agree gets both blocks under a paragraph binding each to
+# the numbers it governs: sending the whole set the bare remedy tells the
+# author of the marked number to rewrite its own legitimate close, which is
+# the destructive edit (#606).
+body mixed-quoting 'Closes #220' 'Closes #221' '' \
+  "An archived round said \`Refs #220\` was right then." '' \
+  'Refs #221 stands bare in this sentence.'
+
+check "a mixed-quoting set still reds and names both numbers" 1 \
+  "scheduled to close: #220 #221" guard mixed-quoting 220 221
+check "the mixed set is scoped rather than given one remedy" 1 \
+  "do not share a remedy" guard mixed-quoting 220 221
+check "the mixed scoping forbids rewriting a marked number's close" 1 \
+  "Do not rewrite a closing-keyword" guard mixed-quoting 220 221
+check "the mixed remedy keeps the archived-record route" 1 \
+  "archived round record" guard mixed-quoting 220 221
+check "the mixed remedy keeps the number-first rewrite for the bare number" 1 \
+  "#N is" guard mixed-quoting 220 221
+check "the mixed remedy keeps the number-free rewrite for the bare number" 1 \
+  "closes the issue" guard mixed-quoting 220 221
+
+# Presence of the marker is not enough: a flag that is global in either
+# direction prints it for both numbers or for neither, and both of those also
+# satisfy the rows above. Count it instead — exactly one of the two targets is
+# quoted-only. The colon is what separates the marker line from the scoping
+# paragraph's backticked quotation of it.
+mixed_marker_count() {
+  bash "$SCRIPT" "$TMP/mixed-quoting.md" 220 221 2>&1 |
+    grep -cF 'every Refs occurrence is quoted:'
+}
+check "exactly one of the mixed targets carries the marker" 0 "1" \
+  mixed_marker_count
+
+# The two directions backtick parity got wrong. A valid multi-backtick span
+# read as bare is the stranding remedy landing on the shape this branch
+# exists to protect; an unmatched opener read as quoted is the discrimination
+# J1 spells out in "anything else … is not quoted-only".
+body span-double 'Closes #220' '' \
+  "The archive says \`\`Refs #220\`\` was once right."
+check "a double-backtick span is quoted" 1 \
+  "every Refs occurrence is quoted" guard span-double 220
+check_absent "a double-backtick span does not get the stranding rewrite" 1 \
+  "#N is" guard span-double 220
+
+body span-unclosed 'Closes #220' '' \
+  "The archive starts \`Refs #220 but the span never closes."
+check_absent "an unmatched opener is not quoted" 1 \
+  "every Refs occurrence is quoted" guard span-unclosed 220
+check "an unmatched opener keeps the old remedy" 1 \
+  "#N is" guard span-unclosed 220
+
 # J7/K13: provenance lives in code comments, never in the message the author
 # reads. The remedy text carries no issue, pull request or discussion number —
 # only the intersecting numbers the run was given.
 remedy_names_an_issue_number() {
-  bash "$SCRIPT" "$TMP/quoted-span.md" 220 2>&1 |
+  bash "$SCRIPT" "$TMP/quoted-only.md" 220 2>&1 |
     sed -n '/must not close N/,$p' | grep -qE '#[0-9]'
 }
 check "quoted-only remedy names no issue number" 1 "" \
