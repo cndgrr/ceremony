@@ -3135,9 +3135,17 @@ check "the at-wall fixture is pinned at the re-based rung" 0 "[1]" \
   fixture_pin_lines atwall 0.2.0
 check "the stepable fixture is pinned at the synthetic interval's rung" 0 "[1]" \
   fixture_pin_lines stepable 0.2.0
+# Bounded by the END OF THE BLOCK, never by a literal inside it. This was the
+# last end-anchored range whose anchor sat in the region it grades: it failed
+# safe — losing the anchor ran to EOF and swept in $SRC rows, redding the
+# absence row below — but "safe by accident" is not a property to leave in the
+# file that just repaired this exact shape three times. The fixture block runs
+# from its declaration to the blank line that ends it, so the boundary is
+# outside what is graded and deleting any row inside cannot move it.
 stepable_runs() {
-  sed -n '/^consumer stepable 0.2.0$/,/^check_absent "the shared source ladder/p' \
-    "$ROOT/test/ceremony-upgrade.test.sh" | grep -- '--source'
+  awk '/^consumer stepable 0\.2\.0$/ { armed = 1 }
+       armed && /^$/ { exit }
+       armed' "$ROOT/test/ceremony-upgrade.test.sh" | grep -- '--source'
 }
 # The needles carry no dollar on purpose: they are matched against the FILE's
 # own text, where the variable name is literal, and a needle written with one
