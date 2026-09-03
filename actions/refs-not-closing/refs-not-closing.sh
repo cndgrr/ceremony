@@ -109,6 +109,40 @@ sentence_for_issue() {
 refs_quoting() {
   local issue="$1"
   awk -v issue="$issue" '
+    # An inline code span is a backtick run closed by a run of the same length
+    # later on the same line, so the runs are matched rather than counted.
+    # Counting single backticks and taking the parity reads a valid ``span``
+    # as bare and an unclosed opener as quoted — and the first of those hands
+    # the remedy that strands the issue to the very shape this branch exists
+    # to protect, so the approximation errs in the one direction that costs
+    # (#606). A run with no equal-length run after it is literal text, and the
+    # scan resumes from the next run as a candidate opener.
+    function span_quoted(line, at,   n, i, j, k, m, count, start, len) {
+      n = length(line)
+      count = 0
+      i = 1
+      while (i <= n) {
+        if (substr(line, i, 1) == "`") {
+          j = i
+          while (j <= n && substr(line, j, 1) == "`") j++
+          count++
+          start[count] = i
+          len[count] = j - i
+          i = j
+        } else {
+          i++
+        }
+      }
+      k = 1
+      while (k <= count) {
+        m = k + 1
+        while (m <= count && len[m] != len[k]) m++
+        if (m > count) { k++; continue }
+        if (at > start[k] && at < start[m]) return 1
+        k = m + 1
+      }
+      return 0
+    }
     BEGIN {
       needle = "(^|[^[:alnum:]_])refs?[[:space:]]*:?[[:space:]]*[[]?#[[:space:]]*" issue "([^0-9]|$)"
     }
@@ -134,9 +168,7 @@ refs_quoting() {
         if (in_fence || blockquote) {
           quoted = 1
         } else {
-          ticks = 0
-          for (i = 1; i < token; i++) if (substr($0, i, 1) == "`") ticks++
-          quoted = ticks % 2
+          quoted = span_quoted($0, token)
         }
         if (!quoted) bare++
         pos = stop
@@ -148,12 +180,55 @@ refs_quoting() {
   ' "$body_file"
 }
 
+# The classification is per number, so the remedy is chosen per number too. A
+# single flag across the whole set sends a quoted-only target the rewrite
+# instruction whenever some other target is bare, which is the destructive
+# edit this branch exists to prevent, on a shape that reaches it (#606). Where
+# the set does not agree, both remedies are printed under a paragraph binding
+# each to the numbers it governs; where it does, the text is exactly what a
+# single-classification run printed before.
 declare -A quoting=()
-all_quoted=1
+quoted_targets=0
 for issue in "${intersections[@]}"; do
   quoting["$issue"]="$(refs_quoting "$issue")"
-  [ "${quoting[$issue]}" = quoted ] || all_quoted=0
+  if [ "${quoting[$issue]}" = quoted ]; then
+    quoted_targets=$((quoted_targets + 1))
+  fi
 done
+
+remedy_quoted() {
+  cat <<'EOF'
+  A `Refs #N` PR must not close N, and every `Refs` occurrence above is
+  quoted — inside a fence, an inline code span, or a blockquote. Two routes
+  reach that shape. If this pull request legitimately closes N, the quoted
+  tokens are an archived round record arguing about N: de-parse them so they
+  no longer read as references, leave the substance of the record intact, and
+  disclose the edit. Otherwise the entry is a Development sidebar link:
+  remove the link. Leave the closing-keyword sentence as it stands — on this
+  shape it is the correct one, and editing it loses the close.
+EOF
+}
+
+remedy_bare() {
+  cat <<'EOF'
+  A `Refs #N` PR must not close N. The closing graph can come from a
+  closing keyword adjacent to the number in the body's prose or a Development
+  sidebar link. Remove the link or rewrite an adjacent closing-keyword sentence
+  so the number comes first (`#N is closed by hand`) or the number is omitted
+  (`triage closes the issue by hand`). If the only match above is backticked,
+  remove the Development sidebar link.
+EOF
+}
+
+remedy_split() {
+  cat <<'EOF'
+  The numbers above do not share a remedy. The first block below applies only
+  to the numbers marked `every Refs occurrence is quoted`, and the second only
+  to the numbers without that marker. Do not rewrite a closing-keyword
+  sentence for a marked number: there the closing sentence is this pull
+  request's own and editing it loses the close.
+EOF
+}
 
 {
   printf 'refs-not-closing: Refs target(s) also scheduled to close:'
@@ -184,26 +259,14 @@ done
     fi
   done
 
-  if [ "$all_quoted" -eq 1 ]; then
-    cat <<'EOF'
-  A `Refs #N` PR must not close N, and every `Refs` occurrence above is
-  quoted — inside a fence, an inline code span, or a blockquote. Two routes
-  reach that shape. If this pull request legitimately closes N, the quoted
-  tokens are an archived round record arguing about N: de-parse them so they
-  no longer read as references, leave the substance of the record intact, and
-  disclose the edit. Otherwise the entry is a Development sidebar link:
-  remove the link. Leave the closing-keyword sentence as it stands — on this
-  shape it is the correct one, and editing it loses the close.
-EOF
+  if [ "$quoted_targets" -eq "${#intersections[@]}" ]; then
+    remedy_quoted
+  elif [ "$quoted_targets" -eq 0 ]; then
+    remedy_bare
   else
-    cat <<'EOF'
-  A `Refs #N` PR must not close N. The closing graph can come from a
-  closing keyword adjacent to the number in the body's prose or a Development
-  sidebar link. Remove the link or rewrite an adjacent closing-keyword sentence
-  so the number comes first (`#N is closed by hand`) or the number is omitted
-  (`triage closes the issue by hand`). If the only match above is backticked,
-  remove the Development sidebar link.
-EOF
+    remedy_split
+    remedy_quoted
+    remedy_bare
   fi
 } >&2
 exit 1
