@@ -2971,6 +2971,36 @@ check_absent "the 0.6.0 step declares no edit operations" 0 "step_edit_ops" \
 check_absent "the 0.6.0 step does not read the doctrine manifest" 0 \
   "VENDORED.txt" doctrine_step_body
 
+# B6 for the tag this build mechanises, in the shape its two siblings use.
+# THE ROWS BELOW ARE THE CRITERION; THE CROSSING ROWS ARE NOT. A crossing that
+# writes a byte is caught by the --fix fixtures, but B6 states a property of
+# the FUNCTION: a step_refuse on an unreached branch, a manifest read whose
+# result is discarded, or an edit declaration the planner never acts on all
+# change no behaviour and no output, so no fixture can see them. Only reading
+# the body can. Extraction starts at the definition line and NOT at the head
+# comment above it, which says "IT CALLS step_refuse NOWHERE" and would
+# satisfy every absence row it is supposed to fail.
+#
+# Both manifests, not one: this step reads neither, and VENDORED.txt is only
+# incidentally covered for it by the file-wide row below.
+rc_step_body() {
+  sed -n '/^step_0_7_0_rc_release_path() {$/,/^}$/p' "$SCRIPT"
+}
+check "the 0.7.0 step carries a non-empty plan" 0 "step_plan+=(" \
+  rc_step_body
+check_absent "the 0.7.0 step has no refusal" 0 "step_refuse" \
+  rc_step_body
+check_absent "the 0.7.0 step declares no new file" 0 "step_new_file" \
+  rc_step_body
+check_absent "the 0.7.0 step declares no edited file" 0 "step_edit_file" \
+  rc_step_body
+check_absent "the 0.7.0 step declares no edit operations" 0 "step_edit_ops" \
+  rc_step_body
+check_absent "the 0.7.0 step does not read the doctrine manifest" 0 \
+  "VENDORED.txt" rc_step_body
+check_absent "the 0.7.0 step does not read the scaffold manifest" 0 \
+  "SCAFFOLDED.txt" rc_step_body
+
 unexpected_vendored_hits() {
   printf '[%s]\n' "$(
     awk '
