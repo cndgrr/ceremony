@@ -987,6 +987,67 @@ check "the pin in that file moved all the same" 0 \
 #
 # A source tree of its own, because naming a guarded scaffold changes what
 # docs-sync demands of EVERY consumer above.
+# --- the 0.7.0 step: a crossing that asks the tree for nothing --------------
+#
+# 0.5.0's class exactly (#610). The premise is that release.yml's
+# workflow_call interface is unchanged in name and requiredness across this
+# tag, so a caller valid below it is valid at it — which makes "the plan
+# writes no byte" a claim about the artifact rather than about the note. The
+# two plan rows are separate on purpose: a plan that announces the crossing
+# without pointing at the guide is a plan a consumer cannot act on.
+consumer rcpath 0.6.3
+check "0.7.0 is announced as an applied step" 0 \
+  "0.7.0 is an APPLIED STEP, so this run performs 0.6.3 -> 0.7.0 and stops there" \
+  in_consumer rcpath --check --source "$SRC" 0.7.0
+check "the 0.7.0 check prints a plan" 0 "THE PLAN" \
+  in_consumer rcpath --check --source "$SRC" 0.7.0
+check "the 0.7.0 plan says the crossing asks this tree for no edit" 0 \
+  "no edit to this tree: 0.7.0 asks it for nothing" \
+  in_consumer rcpath --check --source "$SRC" 0.7.0
+check "the 0.7.0 plan names the guide section" 0 \
+  'docs/CONSUMERS.md § "The artifact hook"' \
+  in_consumer rcpath --check --source "$SRC" 0.7.0
+check_absent "the 0.7.0 plan is not a fault" 0 "FAULT" \
+  in_consumer rcpath --check --source "$SRC" 0.7.0
+check_absent "the 0.7.0 plan is not hand-only" 0 "THE CROSSING IS HAND-ONLY" \
+  in_consumer rcpath --check --source "$SRC" 0.7.0
+unchanged "the 0.7.0 check writes nothing" "$TMP/rcpath" \
+  in_consumer rcpath --check --source "$SRC" 0.7.0
+
+# B5 — the workflows are listed BEFORE the run, so the assertion is against
+# what this consumer actually had rather than against a hard-coded set. A step
+# that wrote a file, deleted one, or changed a byte that is not the pin shows
+# up in one of the two diffs below.
+RCPATH_WF_BEFORE="$TMP/rcpath-workflows-before"
+RCPATH_WF_BODY_BEFORE="$TMP/rcpath-workflows-body-before"
+workflow_set() { (cd "$TMP/rcpath" && find .github/workflows -type f | sort); }
+workflow_bodies() { (cd "$TMP/rcpath" && find .github/workflows -type f | sort | xargs cat); }
+workflow_set >"$RCPATH_WF_BEFORE"
+workflow_bodies >"$RCPATH_WF_BODY_BEFORE"
+
+RCPATH_RUN="$TMP/rcpath-run"
+capture_run "$RCPATH_RUN" in_consumer rcpath --fix --source "$SRC" 0.7.0
+check "the 0.7.0 crossing completes" 0 \
+  "0.6.3 -> 0.7.0 done, including the applied step for 0.7.0" \
+  replay_run "$RCPATH_RUN"
+check "the 0.7.0 crossing exits zero" 0 "0" cat "$RCPATH_RUN.rc"
+check "the completed crossing advances every ref" 0 "$PIN_COUNT 0.7.0" \
+  refs rcpath
+check "the completed crossing re-syncs the mirror" 0 "router v1" \
+  cat "$TMP/rcpath/.ceremony/AGENTS.md"
+workflow_set_diff() {
+  diff "$RCPATH_WF_BEFORE" <(workflow_set) && echo "same-workflow-set"
+}
+workflow_body_diff() {
+  diff \
+    <(sed 's|ceremony/\(.*\)@0\.6\.3|ceremony/\1@0.7.0|' "$RCPATH_WF_BODY_BEFORE") \
+    <(workflow_bodies) && echo "identical-but-for-the-pin"
+}
+check "the crossing leaves the workflow set unchanged" 0 "same-workflow-set" \
+  workflow_set_diff
+check "the crossing changes no workflow byte but the pin" 0 \
+  "identical-but-for-the-pin" workflow_body_diff
+
 SRC_SCAF="$TMP/src-scaffold"
 cp -pPR "$SRC" "$SRC_SCAF"
 mkdir -p "$SRC_SCAF/.github"
