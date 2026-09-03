@@ -82,6 +82,149 @@ check "two-route mutation changes the script" 1 "" \
 check "removing the two-route diagnostic reds its pin" 1 "" \
   diagnostic_names_both_routes "$MUTANT"
 
+# The mirror of the code-span fixture above: a pull request that legitimately
+# closes N while its archived round record quotes `Refs #N` at that same N.
+# The closing keyword is the correct one, so the evidence must name the quoted
+# occurrence that actually produced the intersection and the remedy must not
+# send the author to rewrite the close (#606). Quoted-only is a property of
+# every occurrence, which is what the bare rows below discriminate.
+body quoted-only 'Closes #220' '' \
+  "An archived round said \`Refs #220\` was right then." '' \
+  '> Round 2 argued Refs #220 against the issue as it stood.'
+
+check "quoted-only intersection still reds" 1 \
+  "scheduled to close: #220" guard quoted-only 220
+check "quoted-only failure names the occurrence that fired" 1 \
+  "Refs match: Refs #220" guard quoted-only 220
+check "quoted-only failure prints the quoted occurrence's sentence" 1 \
+  "Refs sentence: An archived round said" guard quoted-only 220
+check "quoted-only failure says every occurrence is quoted" 1 \
+  "every Refs occurrence is quoted" guard quoted-only 220
+check "quoted-only remedy names the archived round record" 1 \
+  "archived round record" guard quoted-only 220
+check "quoted-only remedy says to de-parse the tokens" 1 \
+  "de-parse them" guard quoted-only 220
+check "quoted-only remedy keeps the Development sidebar route" 1 \
+  "Development sidebar link" guard quoted-only 220
+check_absent "quoted-only remedy drops the number-first rewrite" 1 \
+  "#N is" guard quoted-only 220
+check_absent "quoted-only remedy drops the number-free rewrite" 1 \
+  "closes the issue" guard quoted-only 220
+
+# J2, at the two edges the analysis could have moved: a quoted-only body with
+# no closing entry, and one whose closing entry is a different number.
+check "quoted-only body with an empty closing set still passes" 0 \
+  "no Refs target" guard quoted-only
+check "quoted-only body closing another issue still passes" 0 \
+  "no Refs target" guard quoted-only 9
+
+# One bare occurrence among the quoted ones is not quoted-only, and takes the
+# old path in full — both safe forms included.
+body quoted-with-bare 'Closes #220' '' \
+  "An archived round said \`Refs #220\` was right then." '' \
+  '> Round 2 argued Refs #220 against the issue as it stood.' '' \
+  'Refs #220 stands bare in this sentence.'
+
+check "one bare occurrence keeps the number-first rewrite" 1 \
+  "#N is" guard quoted-with-bare 220
+check "one bare occurrence keeps the number-free rewrite" 1 \
+  "closes the issue" guard quoted-with-bare 220
+check_absent "one bare occurrence is not quoted-only" 1 \
+  "every Refs occurrence is quoted" guard quoted-with-bare 220
+check_absent "one bare occurrence does not reach the archived-record route" 1 \
+  "archived round record" guard quoted-with-bare 220
+
+# Each quoting form on its own is sufficient. A build that reads backticks but
+# not `>`, or fences but not spans, reds exactly one of these three.
+body quoted-span 'Closes #220' '' "The record said \`Refs #220\` there."
+body quoted-blockquote 'Closes #220' '' '> The record said Refs #220 there.'
+body quoted-fence 'Closes #220' '' '```' 'The record said Refs #220 there.' '```'
+
+for form in span blockquote fence; do
+  check "a $form occurrence alone is quoted-only" 1 \
+    "every Refs occurrence is quoted" guard "quoted-$form" 220
+  check "a $form-only intersection still reds" 1 \
+    "scheduled to close: #220" guard "quoted-$form" 220
+done
+
+# The fence closes on its own delimiter character and nothing else, so a fence
+# neither swallows the body after it nor is broken open by a different
+# character inside it. Both directions are the same house rule from
+# actions/issueflow-reconcile/issueflow-reconcile.sh.
+body fence-then-bare 'Closes #220' '' '~~~' 'The record said Refs #220 there.' \
+  '~~~' '' 'Refs #220 stands bare after the fence.'
+check_absent "a closed fence does not swallow the bare occurrence after it" 1 \
+  "every Refs occurrence is quoted" guard fence-then-bare 220
+check "the occurrence after a closed fence keeps the old remedy" 1 \
+  "#N is" guard fence-then-bare 220
+
+body fence-mismatched '```' 'The record said Refs #220 there.' '~~~' \
+  'And said Refs #220 again.' '```' '' 'Closes #220'
+check "a tilde line does not close a backtick fence" 1 \
+  "every Refs occurrence is quoted" guard fence-mismatched 220
+
+# Quoting is classified per number, so the remedy is selected per number. A
+# set that does not agree gets both blocks under a paragraph binding each to
+# the numbers it governs: sending the whole set the bare remedy tells the
+# author of the marked number to rewrite its own legitimate close, which is
+# the destructive edit (#606).
+body mixed-quoting 'Closes #220' 'Closes #221' '' \
+  "An archived round said \`Refs #220\` was right then." '' \
+  'Refs #221 stands bare in this sentence.'
+
+check "a mixed-quoting set still reds and names both numbers" 1 \
+  "scheduled to close: #220 #221" guard mixed-quoting 220 221
+check "the mixed set is scoped rather than given one remedy" 1 \
+  "do not share a remedy" guard mixed-quoting 220 221
+check "the mixed scoping forbids rewriting a marked number's close" 1 \
+  "Do not rewrite a closing-keyword" guard mixed-quoting 220 221
+check "the mixed remedy keeps the archived-record route" 1 \
+  "archived round record" guard mixed-quoting 220 221
+check "the mixed remedy keeps the number-first rewrite for the bare number" 1 \
+  "#N is" guard mixed-quoting 220 221
+check "the mixed remedy keeps the number-free rewrite for the bare number" 1 \
+  "closes the issue" guard mixed-quoting 220 221
+
+# Presence of the marker is not enough: a flag that is global in either
+# direction prints it for both numbers or for neither, and both of those also
+# satisfy the rows above. Count it instead — exactly one of the two targets is
+# quoted-only. The colon is what separates the marker line from the scoping
+# paragraph's backticked quotation of it.
+mixed_marker_count() {
+  bash "$SCRIPT" "$TMP/mixed-quoting.md" 220 221 2>&1 |
+    grep -cF 'every Refs occurrence is quoted:'
+}
+check "exactly one of the mixed targets carries the marker" 0 "1" \
+  mixed_marker_count
+
+# The two directions backtick parity got wrong. A valid multi-backtick span
+# read as bare is the stranding remedy landing on the shape this branch
+# exists to protect; an unmatched opener read as quoted is the discrimination
+# J1 spells out in "anything else … is not quoted-only".
+body span-double 'Closes #220' '' \
+  "The archive says \`\`Refs #220\`\` was once right."
+check "a double-backtick span is quoted" 1 \
+  "every Refs occurrence is quoted" guard span-double 220
+check_absent "a double-backtick span does not get the stranding rewrite" 1 \
+  "#N is" guard span-double 220
+
+body span-unclosed 'Closes #220' '' \
+  "The archive starts \`Refs #220 but the span never closes."
+check_absent "an unmatched opener is not quoted" 1 \
+  "every Refs occurrence is quoted" guard span-unclosed 220
+check "an unmatched opener keeps the old remedy" 1 \
+  "#N is" guard span-unclosed 220
+
+# J7/K13: provenance lives in code comments, never in the message the author
+# reads. The remedy text carries no issue, pull request or discussion number —
+# only the intersecting numbers the run was given.
+remedy_names_an_issue_number() {
+  bash "$SCRIPT" "$TMP/quoted-only.md" 220 2>&1 |
+    sed -n '/must not close N/,$p' | grep -qE '#[0-9]'
+}
+check "quoted-only remedy names no issue number" 1 "" \
+  remedy_names_an_issue_number
+
 # A code span is descriptive in both role paragraphs, but it must never appear
 # after the safe-rewrite anchor as another recommended remedy (#359).
 doctrine_avoids_code_span_remedy() {
