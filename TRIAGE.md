@@ -100,7 +100,21 @@ Every issue you mint carries, in this order:
   the code it touches (permalinks at a pinned SHA, so line references cannot
   rot), prior art in sibling repos.
 - **The spec**: decisions made, not options listed. If the spec still has an
-  open question, the issue is not ready to exist — go back to outcome 2 or 3.
+  open question **of its own**, the issue is not ready to exist — go back to
+  outcome 2 or 3. A spec that is complete and deliberately scoped **around**
+  an open question live **elsewhere** is the other shape and is mintable:
+  what makes it ready is that its deliverable needs no answer from that
+  question, not that the question has one.
+
+  **Scoping around one puts the scope on every clause that mandates work, in
+  its own text.** A builder implementing the clause literally must not be
+  able to reach the reserved case, so a reservation stated once — beside the
+  mandates rather than inside them — is not self-enforcing.
+
+  **Never assert what the prose you are commissioning cannot reach.** That is
+  a claim about text nobody has written yet, so the builder inherits the
+  assertion instead of checking the property. State the scope; do not predict
+  the text (#615).
 - **Tasks**: the steps, checkboxed, in order.
 - **Acceptance criteria**: checkboxed, verifiable, and honest — these become
   the builder's definition of done and the reviewer's review spec, verbatim.
