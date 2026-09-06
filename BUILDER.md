@@ -161,6 +161,22 @@ not to guess.
   released artifact — it is a **defect in the issue**: report it there and let
   triage split it, the same move you make for a criterion beyond your reach.
   Never write `Refs #N` to route around it (#151, #536).
+  **Before you request review, read the head's closing-issue graph and
+  confirm it equals the set the body declares.** The graph is what GitHub
+  will actually close, and nothing compares it against what the PR says it
+  closes: a node the body never declared closes an issue nobody decided to
+  close, usually because a quoted line enrolled itself. Repair it before
+  review by the ordinary route — declare the close where it is intended, or
+  take the enrolment out: in the body by the safe forms the next bullet
+  gives, in the Development sidebar where the enrolment is a link. Quantify
+  over the graph's **nodes** and never over the body's matches, a closing
+  keyword that enrolled nothing being the quoting case, already governed and
+  no defect (#200, #218). **The graph is recomputed from the body, so a read
+  is evidence about the body it was taken over and no later one** — re-run it
+  after your last body edit, the edit recording the repair included. And
+  where the enrolling sentence is a **quotation the body holds several copies
+  of, the repair sweeps every occurrence**, not the one somebody named
+  (#613).
 - On a `Refs #N` PR, never put a closing keyword (`close`, `closes`,
   `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, `resolved`)
   immediately before `#N` **in the body or in any commit message on the
