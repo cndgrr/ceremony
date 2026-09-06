@@ -165,13 +165,17 @@ not to guess.
   confirm it equals the set the body declares.** The graph is what GitHub
   will actually close, and nothing compares it against what the PR says it
   closes: a node the body never declared closes an issue nobody decided to
-  close, usually because a quoted line enrolled itself. Repair it before
-  review by the ordinary route — declare the close where it is intended, or
-  take the enrolment out: in the body by the safe forms the next bullet
-  gives, in the Development sidebar where the enrolment is a link. Quantify
-  over the graph's **nodes** and never over the body's matches, a closing
-  keyword that enrolled nothing being the quoting case, already governed and
-  no defect (#200, #218). **The graph is recomputed from the body, so a read
+  close, usually because a quoted line enrolled itself. Repair a node **you
+  did not intend** before review, by the ordinary route — declare the close
+  where it is intended, or take the enrolment out: in the body by the safe
+  forms the next bullet gives, in the Development sidebar where the
+  enrolment is a link you did not mean to make. A link you put there
+  **deliberately**, and a cross-repo `owner/repo#N` node, are outside this
+  bullet: whether either must also be declared in the body is open on #612,
+  so raise it there rather than repairing it under a rule that does not
+  reach it. Quantify over the graph's **nodes** and never over the body's
+  matches, a closing keyword that enrolled nothing being the quoting case,
+  already governed and no defect (#200, #218). **The graph is recomputed from the body, so a read
   is evidence about the body it was taken over and no later one** — re-run it
   after your last body edit, the edit recording the repair included. And
   where the enrolling sentence is a **quotation the body holds several copies
